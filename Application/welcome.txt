@@ -1,0 +1,7 @@
+/**
+ * Description of welcome.txt
+ * 
+ * @author Victor Angelier <vangelier@hotmail.com>
+ * @copyright 2014 Ignite the Future
+ * 
+ */
