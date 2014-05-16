@@ -36,17 +36,30 @@ if ($result === false) {
 
 $crypt = new Crypto();
 $command = array(
-    "command"   =>  "msg",
+    "command"   =>  "/setnick",
     "channel"   => "public",
-    "message"   =>  $crypt->encrypt("Secret message"),
-    "message_type"   =>  "Message type"
+    "message"   =>  $crypt->encrypt("DigitalHuman"),
+    "message_type"   =>  "C"
 );
 $in = json_encode($command)."\n";
+
 $out = '';
 
 echo "Sending HTTP HEAD request...";
 socket_write($socket, $in, strlen($in));
 echo "OK.\n";
+echo socket_read($socket, 2048)."\n";
+
+$command = array(
+    "command"   =>  "/msg",
+    "channel"   => "private",
+    "message"   =>  $crypt->encrypt("Hoi daar"),
+    "message_type"   =>  "C"
+);
+$in = json_encode($command)."\n";
+echo $in."\n";
+
+socket_write($socket, $in, strlen($in));
 
 echo "Reading response:\n\n";
 while ($out = socket_read($socket, 2048)) {

@@ -145,9 +145,9 @@ class Zion extends SSLServer implements iZionServer {
                 echo $buf."\n";
                 
                 //Add user to the channel object and handle the command
-                $this->channels->add_user($message['channel'], $client_socket, $k);
+                $this->channels->add_user($message['channel'], $k, $k);
                 $message["from"] = $k;
-                $this->onCommandReceived($client_socket, $message);
+                $this->onCommandReceived($message);
             }
         }
     }
@@ -156,13 +156,42 @@ class Zion extends SSLServer implements iZionServer {
      * On command received handlerr
      * @param type $command
      */
-    public function onCommandReceived($client_socket, $command) {
-        $handler = new CommandHandler();   
-        $response = $handler->handleCommand($command["command"]);
-        
-        $message = "@{$command['from']} wrote: " . $this->crypto->decrypt($command["message"]);
-        //Send a message to the users in this channel
-        $this->send_channel_message($command["channel"], $message);
+    public function onCommandReceived($command) {
+        $handler = new CommandHandler($this->channels, $this->clients);   
+        $response = $handler->handleCommand($command);
+                
+        //If empty dont do anything
+        if($response !== "\n"){
+            
+            $message = "[{$this->channels->get_nickname_by_channel_key($command['from'], $command["channel"])}]: {$response}\n";
+            switch($command["message_type"]){
+
+                case "C" ://We have a channel wide command
+                    //Send a message to the users in this channel
+                    $this->send_channel_message($command["channel"], $message);
+                    break;
+
+                case "P" ://We have a private message/command
+                    $this->send_channel_user($message, $command, $command["user"]);
+                    break;
+            }
+        }
+    }
+    
+    /**
+     * Send a message to a specific user in a specific channel
+     * 
+     * @param type $message
+     * @param type $command
+     * @param type $k
+     */
+    public function send_channel_user($message, $command, $k){
+        $channel_users = $this->channels->get_channel_users($command['channel']);
+        if(isset($this->clients[$k]) && isset($channel_users[$k])){
+            socket_write($this->clients[$k], $message);
+        }else{
+            socket_write($this->clients[$command["from"]], "User is not in this channel\n");
+        }
     }
 
     /**
@@ -174,7 +203,7 @@ class Zion extends SSLServer implements iZionServer {
     public function send_channel_message($channel, $message){
         foreach($this->channels->get_channel_users($channel) as $k => $user){
             if(isset($this->clients[$k])){
-                socket_write($user, $message);
+                socket_write($this->clients[$k], $message);
             }
         }
     }
@@ -184,16 +213,14 @@ class Zion extends SSLServer implements iZionServer {
      * @param type $socket
      */
     public function onClientDisconnect($k, $socket) {
-        if(socket_getpeername($socket, $address) !== false){
-            
-            //Close the socket
-            @socket_close($socket);
-            @socket_shutdown($socket);
-            unset($this->read[$k]);
-            unset($this->clients[$k]);
-            
-            //Delete from all channels. Client is disconnected
-            $this->channels->delete_user($k);
+        //Close the socket
+        unset($this->read[$k]);
+        unset($this->clients[$k]);
+        
+        //Delete from all channels. Client is disconnected
+        $this->channels->delete_user($k);
+        
+        if(@socket_getpeername($socket, $address) !== false){
 
             //Remove this client from our list
             $this->send_message("Client {$address} disconnected.\n");
@@ -202,6 +229,9 @@ class Zion extends SSLServer implements iZionServer {
         }else{
             log_message("Can't find ipaddress of this client.");
         }
+        
+        @socket_close($socket);
+        @socket_shutdown($socket);
     }
     
     /**
@@ -217,7 +247,7 @@ class Zion extends SSLServer implements iZionServer {
             }
             
             //Send message to all clients
-            $this->send_message("Client: {$address} connected.");
+            $this->send_message("Client: {$address} connected.\n");
             echo "Client {$address} connected.\n";
             
         }else{

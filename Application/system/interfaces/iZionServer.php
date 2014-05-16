@@ -11,6 +11,5 @@
 interface iZionServer {
     
     public function onClientConnect($socket);
-    public function onCommandReceived($socket, $command);
     public function onClientDisconnect($key, $socket);
 }

@@ -17,18 +17,98 @@ class Channels {
     }
     
     /**
+     * Get Socket KeyIndex by the users nickname in a channel
+     * @param type $nickname
+     * @param type $channel
+     * @return boolean
+     */
+    public function get_keyindex_by_nickname($nickname = "", $channel = ""){
+        foreach($this->list[$channel] as $k => $nick){
+            if($nickname === $nick){
+                return $k;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Leave the channel
+     * @param type $channel
+     * @param type $key
+     * @return boolean
+     */
+    public function leave_channel($channel = "", $key = ""){
+        if(isset($this->list[$channel])){
+            if(isset($this->list[$channel][$key])){
+                unset($this->list[$channel][$key]);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Join / create new channel
+     * @param type $channel
+     * @param type $key
+     * @return boolean
+     */
+    public function join_channel($channel = "", $key = ""){
+        if(!isset($this->list[$channel])){
+            $this->list[$channel] = array();
+        }
+        if(!isset($this->list[$channel][$key])){
+            $this->list[$channel][$key] = $this->get_nickname_by_channel_key($key, $channel);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get NickName by channel and KeyIndex
+     * 
+     * @param type $key
+     * @param type $chan
+     * @return type
+     */
+    public function get_nickname_by_channel_key($key = "", $chan = "public"){
+        foreach($this->list[$chan] as $k => $user){
+            if($k === $key){
+                return $this->list[$chan][$key];
+            }
+        }
+        return $key;
+    }
+    
+    /**
+     * Set nickName
+     * @param type $k //Socket Key index
+     * @param type $name //Nickname
+     * @param type $chan  //Channel name
+     */
+    public function set_nickname($k, $name = "", $chan = ""){
+        foreach($this->list[$chan] as $key => $user){
+            if($k === $key){
+                $this->list[$chan][$key] = $name;
+            }
+        }
+    }
+    
+    /**
      * Add user to the channel
      * 
      * @param type $channel
-     * @param type $client_socket
+     * @param type $nickname
      * @param type $key
      */
-    public function add_user($channel, $client_socket, $key){
+    public function add_user($channel, $nickname, $key){
         if(!isset($this->list[$channel])){
             $this->list[$channel] = array();
         }
         if(!in_array($key, $this->list[$channel])){
-            $this->list[$channel][$key] = $client_socket;
+            if(!isset($this->list[$channel][$key])){
+                $this->list[$channel][$key] = $nickname;
+            }
         }
     }
     
@@ -39,7 +119,7 @@ class Channels {
      */
     public function delete_user($key){
         foreach($this->list as $channel => $client){
-            foreach($this->list[$channel] as $k => $socket){
+            foreach($this->list[$channel] as $k => $nickname){
                 if($key === $k){
                     unset($this->list[$channel][$k]);
                 }
